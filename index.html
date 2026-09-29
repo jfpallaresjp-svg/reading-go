@@ -19,16 +19,21 @@
 </head>
 <body>
 <main>
-  <h1>Starting your reading block</h1>
+  <h1 id="h">Starting your reading block</h1>
   <p>Tap Open when Safari asks. If nothing happens, tap the button.</p>
   <a id="go" href="#">Start the block</a>
   <p>Coming back to Safari closes this tab.</p>
 </main>
 <script>
-  // Opened by the Training OS reading timer as .../reading-go/#40 (the minutes). Hands them to the iPhone Shortcut
-  // "Reading block", which starts the ScreenZen session. Nothing here is stored or sent anywhere.
+  // Opened by the Training OS reading timer: .../reading-go/#40 (Start, the minutes) runs the iPhone Shortcut
+  // "Reading block" (ScreenZen session + Reading Focus on); #stop (Stop) runs "Reading block stop". Nothing here is
+  // stored or sent anywhere.
+  var stop = location.hash === '#stop';
   var m = (location.hash.match(/^#(\d{1,3})$/) || [])[1] || '';
-  var url = 'shortcuts://run-shortcut?name=' + encodeURIComponent('Reading block') + (m ? '&input=text&text=' + m : '');
+  var url = 'shortcuts://run-shortcut?name=' + encodeURIComponent(stop ? 'Reading block stop' : 'Reading block') +
+            (m ? '&input=text&text=' + m : '');
+  if (stop) { document.getElementById('h').textContent = 'Ending your reading block';
+              document.getElementById('go').textContent = 'End the block'; document.title = 'Reading block stop'; }
   document.getElementById('go').href = url;
   var left = false;
   document.addEventListener('visibilitychange', function () {
