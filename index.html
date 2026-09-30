@@ -47,6 +47,38 @@
     document.getElementById('p1').textContent = 'That link isn\u2019t a Training OS routine.'; document.getElementById('p2').textContent = '';
     url = '';
   }
+  // #tos-run=<why>&repo=<owner>/<repo> (the Training OS sync button, Todd's Apply now, a saved workout; 2026-09-30):
+  // start the Garmin poller's workflow, which starts the cloud routine at once. The GitHub token (fine-grained: that one
+  // repository, Actions read and write) is pasted here once and kept only in this browser; nothing is in this page.
+  var run = location.hash.match(/^#tos-run=([^&]{1,60})&repo=([\w.-]{1,40}\/[\w.-]{1,60})$/);
+  if (run) { url = ''; tosRun(decodeURIComponent(run[1]), run[2]); }
+  function tosRun(why, repo) {
+    var h = document.getElementById('h'), p1 = document.getElementById('p1'), p2 = document.getElementById('p2'), go = document.getElementById('go');
+    document.title = 'Training OS sync'; go.hidden = true;
+    var key = 'tos:gh:' + repo, tok = ''; try { tok = localStorage.getItem(key) || ''; } catch (e) {}
+    function setup(msg) {
+      h.textContent = 'One-time setup'; p1.textContent = msg || 'Paste a GitHub fine-grained token for ' + repo + ' with Actions: Read and write. It stays in this browser only.';
+      p2.textContent = '';
+      var f = document.createElement('form'); f.style.cssText = 'display:flex;flex-direction:column;gap:10px;width:100%';
+      f.innerHTML = '<input type="password" autocomplete="off" placeholder="github_pat_…" style="font:inherit;padding:10px 12px;border-radius:10px;border:1px solid rgba(255,255,255,.2);background:#1b2226;color:#e8eef1">'
+        + '<button type="submit" style="font:inherit;font-weight:600;padding:11px;border-radius:999px;border:0;background:#a9c3cf;color:#0f1417">Save and sync</button>';
+      p1.after(f);
+      f.addEventListener('submit', function (ev) { ev.preventDefault(); var v = f.querySelector('input').value.trim(); if (!v) return;
+        try { localStorage.setItem(key, v); } catch (e) {} f.remove(); dispatch(v); });
+    }
+    function dispatch(t) {
+      h.textContent = 'Starting your sync…'; p1.textContent = ''; p2.textContent = '';
+      fetch('https://api.github.com/repos/' + repo + '/actions/workflows/garmin-poll.yml/dispatches', {
+        method: 'POST', headers: { 'Authorization': 'Bearer ' + t, 'Accept': 'application/vnd.github+json', 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ref: 'main', inputs: { fire: why } })
+      }).then(function (r) {
+        if (r.status === 204) { h.textContent = '\u2713 Sync started'; p1.textContent = 'Your dashboard updates in about 3 minutes.'; p2.textContent = 'Switch back to Claude: this tab closes itself.'; return; }
+        if (r.status === 401 || r.status === 403 || r.status === 404) { try { localStorage.removeItem(key); } catch (e) {} return setup('GitHub refused that token (' + r.status + '). Paste a new one: fine-grained, ' + repo + ', Actions: Read and write.'); }
+        h.textContent = 'Sync didn\u2019t start'; p1.textContent = 'GitHub answered ' + r.status + '. Try again in a minute.';
+      }).catch(function () { h.textContent = 'No connection'; p1.textContent = 'Try again when you\u2019re online.'; });
+    }
+    if (tok) dispatch(tok); else setup();
+  }
   if (url) document.getElementById('go').href = url;
   var left = false;
   document.addEventListener('visibilitychange', function () {
